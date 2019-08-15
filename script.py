@@ -4,21 +4,26 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 
-#consts
+# constantes
 BASE_URL = "https://www.amazon.com.br/"
 
+## obtém o nome do produto.
 def getProductName(product):
     return product.find("a", {"class": "a-link-normal a-text-normal"}).span.text
 
+## obtém o link da imagem do produto
 def getProductImage(product):
     return product.find("img", {"class": "s-image"}).get("src")
 
+## obtém um link para acesso ao produto (pode ser usado para acessar a página que tem mais informações ainda do produto e continuar varrendo a amazon)
 def getProductLink(product):
     return BASE_URL + product.find("a", {"class": "a-link-normal a-text-normal"}).get("href")
 
+## obtém o valor de estrelas que o produto recebeu. Caso não possua uma avaliação retorna -1.
 def getProductRatingOf5Stars(product):
     return product.find("span", {"class", "a-icon-alt"}).text.split()[0] if product.find("span", {"class", "a-icon-alt"}) else -1
 
+### analisa os campos dentro do card do produto e retorna somente um objeto com os preços do produto (promoção, variação ou grátis) 
 def getProductPrice(product):
     price = {}
     # pega todos preços
@@ -38,6 +43,7 @@ def getProductPrice(product):
         price["value"] = "0.0"
     return price
 
+## Obtém os preços dentro de um unico campo do csv, formatando o dicionario que foi criado para pura string
 def getPrices(object_price):
     data = ""
     for i, (key, value) in enumerate(object_price.items()):
@@ -45,6 +51,7 @@ def getPrices(object_price):
 
     return data
 
+## Obtem todas as informações de cada produto e formata-os devidamente para o formado csv antes de retornar
 def getInfoProduct(product):
     info_product = {}
     info_product["name"] = getProductName(product)
@@ -55,6 +62,7 @@ def getInfoProduct(product):
 
     return "{};{};{};{};{}".format(info_product["name"].encode('utf-8'), info_product["image"], info_product["link"], info_product["rating_of_5starts"], getPrices(info_product["price"]))
 
+## Função principal. ela abre o arquivo, faz a requisição para cada página da amazon quando ela ainda tiver produtos e armazena is dados.
 def searchDataFromPage(searchWord, maxPage, filename="products"):
     f = open("{}.csv".format(filename), "w")
 
@@ -75,21 +83,26 @@ def searchDataFromPage(searchWord, maxPage, filename="products"):
         # Pega a lista de produtos completa (limitando para que o filtro fique mais simples com o find ou findall do beautifulsoup)
         list_products = soup.find("div", {"class": "s-result-list s-search-results sg-row"})
 
+        # Obtêm o campos que representam cada card dentro da página da amazon
         products = list_products.find_all("div", {"class": "s-result-item"})
 
+        # se a página não possui nenhum desses cards, ela está vazia.
         if len(products) <= 0:
             print("\nParou na página {}/{}. Nenhnum produto foi encontrado a partir deste ponto".format(countPage+1, maxPage))
             break
 
+        # para cada card de produto, coleta suas informações na variável data já devidamente formatada para csv, e escreve uma nova linha no arquivo
         for product in products:
             data = getInfoProduct(product)
             f.write(data+"\n")
 
     f.close()
 
+## Main da aplicação
 if __name__ == "__main__":
     searchWord = raw_input("Informe o termo de pesquisa: ")
 
+    #Valida o número informado.
     num_pages = ''
     while True:
         try:
